@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useForm } from "react-hook-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,32 +48,70 @@ const regions = [
 ]
 
 export function JobSubmissionForm() {
-  const [urls, setUrls] = useState<string[]>([])
-  const [currentUrl, setCurrentUrl] = useState("")
-  const [selectedTarget, setSelectedTarget] = useState<string | null>(null)
-  const [concurrency, setConcurrency] = useState([50])
-  const [enableJavascript, setEnableJavascript] = useState(false)
-  const [enableScreenshots, setEnableScreenshots] = useState(false)
-  const [respectRobots, setRespectRobots] = useState(true)
-  const [retryFailed, setRetryFailed] = useState(true)
+  const { register, watch, setValue, handleSubmit } = useForm({
+    defaultValues: {
+      jobName: "",
+      description: "",
+      priority: "normal",
+      schedule: "immediate",
+      selectedTarget: null as string | null,
+      targetPaths: "",
+      customUrls: [] as string[],
+      currentUrl: "",
+      concurrency: 50,
+      outputFormat: "json",
+      region: "global",
+      enableJavascript: false,
+      enableScreenshots: false,
+      respectRobots: true,
+      retryFailed: true,
+    },
+  })
+
+  const formValues = watch()
+  const {
+    jobName,
+    description,
+    priority,
+    schedule,
+    selectedTarget,
+    targetPaths,
+    customUrls,
+    currentUrl,
+    concurrency,
+    outputFormat,
+    region,
+    enableJavascript,
+    enableScreenshots,
+    respectRobots,
+    retryFailed,
+  } = formValues
 
   const addUrl = () => {
-    if (currentUrl && !urls.includes(currentUrl)) {
-      setUrls([...urls, currentUrl])
-      setCurrentUrl("")
+    if (currentUrl && !customUrls.includes(currentUrl)) {
+      setValue("customUrls", [...customUrls, currentUrl])
+      setValue("currentUrl", "")
     }
   }
 
   const removeUrl = (url: string) => {
-    setUrls(urls.filter((u) => u !== url))
+    setValue(
+      "customUrls",
+      customUrls.filter((u) => u !== url)
+    )
   }
 
-  const estimatedCost = (urls.length || 1) * concurrency[0] * 0.001
-  const estimatedTime = Math.ceil(((urls.length || 1) * 1000) / concurrency[0])
+  const estimatedCost = (customUrls.length || 1) * concurrency * 0.001
+  const estimatedTime = Math.ceil(((customUrls.length || 1) * 1000) / concurrency)
+
+  const onSubmit = (data: any) => {
+    console.log("Form Values:", data)
+    // Handle form submission here
+  }
 
   return (
     <TooltipProvider>
-      <div className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -100,7 +138,12 @@ export function JobSubmissionForm() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="job-name">Job Name</Label>
-                  <Input id="job-name" placeholder="e.g., Reddit ML Discussion Scrape" className="bg-background" />
+                  <Input
+                    id="job-name"
+                    placeholder="e.g., Reddit ML Discussion Scrape"
+                    className="bg-background"
+                    {...register("jobName")}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Description (Optional)</Label>
@@ -109,12 +152,13 @@ export function JobSubmissionForm() {
                     placeholder="Describe what data you're collecting and why..."
                     className="bg-background resize-none"
                     rows={3}
+                    {...register("description")}
                   />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Priority</Label>
-                    <Select defaultValue="normal">
+                    <Select value={priority} onValueChange={(value) => setValue("priority", value)}>
                       <SelectTrigger className="bg-background">
                         <SelectValue />
                       </SelectTrigger>
@@ -128,7 +172,7 @@ export function JobSubmissionForm() {
                   </div>
                   <div className="space-y-2">
                     <Label>Schedule</Label>
-                    <Select defaultValue="immediate">
+                    <Select value={schedule} onValueChange={(value) => setValue("schedule", value)}>
                       <SelectTrigger className="bg-background">
                         <SelectValue />
                       </SelectTrigger>
@@ -160,7 +204,8 @@ export function JobSubmissionForm() {
                       {presetTargets.map((target) => (
                         <button
                           key={target.name}
-                          onClick={() => setSelectedTarget(target.name)}
+                          type="button"
+                          onClick={() => setValue("selectedTarget", target.name)}
                           className={`flex flex-col items-center gap-2 rounded-lg border p-3 text-sm transition-colors ${
                             selectedTarget === target.name
                               ? "border-primary bg-primary/10 text-primary"
@@ -184,6 +229,7 @@ export function JobSubmissionForm() {
                                 : "Enter target paths..."
                           }
                           className="bg-background"
+                          {...register("targetPaths")}
                         />
                       </div>
                     )}
@@ -193,21 +239,25 @@ export function JobSubmissionForm() {
                       <Input
                         placeholder="https://example.com/page"
                         value={currentUrl}
-                        onChange={(e: any) => setCurrentUrl(e.target?.value)}
-                        onKeyDown={(e: any) => e.key === "Enter" && addUrl()}
+                        onChange={(e) => setValue("currentUrl", e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && addUrl()}
                         className="bg-background"
                       />
-                      <Button onClick={addUrl} size="icon" variant="outline">
+                      <Button onClick={addUrl} size="icon" variant="outline" type="button">
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
-                    {urls.length > 0 && (
+                    {customUrls.length > 0 && (
                       <div className="flex flex-wrap gap-2">
-                        {urls.map((url) => (
+                        {customUrls.map((url) => (
                           <Badge key={url} variant="secondary" className="flex items-center gap-1 py-1 px-2">
                             <Globe className="h-3 w-3" />
                             <span className="max-w-[200px] truncate">{url}</span>
-                            <button onClick={() => removeUrl(url)} className="ml-1 hover:text-destructive">
+                            <button
+                              type="button"
+                              onClick={() => removeUrl(url)}
+                              className="ml-1 hover:text-destructive"
+                            >
                               <X className="h-3 w-3" />
                             </button>
                           </Badge>
@@ -217,7 +267,7 @@ export function JobSubmissionForm() {
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Info className="h-3 w-3" />
                       <span>You can also upload a CSV or JSON file with URLs</span>
-                      <Button variant="link" size="sm" className="h-auto p-0 text-xs">
+                      <Button variant="link" size="sm" className="h-auto p-0 text-xs" type="button">
                         Upload File
                       </Button>
                     </div>
@@ -237,11 +287,11 @@ export function JobSubmissionForm() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label>Concurrency</Label>
-                      <span className="text-sm text-muted-foreground">{concurrency[0]} parallel requests</span>
+                      <span className="text-sm text-muted-foreground">{concurrency} parallel requests</span>
                     </div>
                     <Slider
-                      value={concurrency}
-                      onValueChange={setConcurrency}
+                      value={[concurrency]}
+                      onValueChange={(value) => setValue("concurrency", value[0])}
                       min={10}
                       max={200}
                       step={10}
@@ -255,7 +305,7 @@ export function JobSubmissionForm() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Output Format</Label>
-                      <Select defaultValue="json">
+                      <Select value={outputFormat} onValueChange={(value) => setValue("outputFormat", value)}>
                         <SelectTrigger className="bg-background">
                           <SelectValue />
                         </SelectTrigger>
@@ -274,7 +324,7 @@ export function JobSubmissionForm() {
                     </div>
                     <div className="space-y-2">
                       <Label>Region</Label>
-                      <Select defaultValue="global">
+                      <Select value={region} onValueChange={(value) => setValue("region", value)}>
                         <SelectTrigger className="bg-background">
                           <SelectValue />
                         </SelectTrigger>
@@ -306,7 +356,10 @@ export function JobSubmissionForm() {
                           <p className="text-xs text-muted-foreground">Execute JS for dynamic content</p>
                         </div>
                       </div>
-                      <Switch checked={enableJavascript} onCheckedChange={setEnableJavascript} />
+                      <Switch
+                        checked={enableJavascript}
+                        onCheckedChange={(value) => setValue("enableJavascript", value)}
+                      />
                     </div>
                     <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3">
                       <div className="flex items-center gap-3">
@@ -316,7 +369,10 @@ export function JobSubmissionForm() {
                           <p className="text-xs text-muted-foreground">Save page screenshots</p>
                         </div>
                       </div>
-                      <Switch checked={enableScreenshots} onCheckedChange={setEnableScreenshots} />
+                      <Switch
+                        checked={enableScreenshots}
+                        onCheckedChange={(value) => setValue("enableScreenshots", value)}
+                      />
                     </div>
                     <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3">
                       <div className="flex items-center gap-3">
@@ -326,7 +382,10 @@ export function JobSubmissionForm() {
                           <p className="text-xs text-muted-foreground">Follow crawling guidelines</p>
                         </div>
                       </div>
-                      <Switch checked={respectRobots} onCheckedChange={setRespectRobots} />
+                      <Switch
+                        checked={respectRobots}
+                        onCheckedChange={(value) => setValue("respectRobots", value)}
+                      />
                     </div>
                     <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3">
                       <div className="flex items-center gap-3">
@@ -336,7 +395,10 @@ export function JobSubmissionForm() {
                           <p className="text-xs text-muted-foreground">Retry failed requests up to 3 times</p>
                         </div>
                       </div>
-                      <Switch checked={retryFailed} onCheckedChange={setRetryFailed} />
+                      <Switch
+                        checked={retryFailed}
+                        onCheckedChange={(value) => setValue("retryFailed", value)}
+                      />
                     </div>
                   </div>
                 </div>
@@ -359,11 +421,11 @@ export function JobSubmissionForm() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">URLs</span>
-                    <span className="font-medium">{urls.length || (selectedTarget ? "Auto-discovered" : "0")}</span>
+                    <span className="font-medium">{customUrls.length || (selectedTarget ? "Auto-discovered" : "0")}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Concurrency</span>
-                    <span className="font-medium">{concurrency[0]} parallel</span>
+                    <span className="font-medium">{concurrency} parallel</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">JS Rendering</span>
@@ -396,11 +458,11 @@ export function JobSubmissionForm() {
                 </div>
 
                 <div className="border-t border-border pt-4 space-y-3">
-                  <Button className="w-full" size="lg">
+                  <Button className="w-full" size="lg" type="submit">
                     Launch Job
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                  <Button variant="outline" className="w-full bg-transparent">
+                  <Button variant="outline" className="w-full bg-transparent" type="button">
                     Save as Draft
                   </Button>
                 </div>
@@ -421,21 +483,30 @@ export function JobSubmissionForm() {
                 <CardDescription>Start with a pre-configured job</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
-                <button className="w-full flex items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary/50 hover:bg-muted transition-colors">
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary/50 hover:bg-muted transition-colors"
+                >
                   <span className="text-lg">🔴</span>
                   <div>
                     <p className="text-sm font-medium">Reddit Subreddit Scrape</p>
                     <p className="text-xs text-muted-foreground">Posts, comments, metadata</p>
                   </div>
                 </button>
-                <button className="w-full flex items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary/50 hover:bg-muted transition-colors">
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary/50 hover:bg-muted transition-colors"
+                >
                   <span className="text-lg">🐦</span>
                   <div>
                     <p className="text-sm font-medium">Twitter Hashtag Monitor</p>
                     <p className="text-xs text-muted-foreground">Real-time tweet collection</p>
                   </div>
                 </button>
-                <button className="w-full flex items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary/50 hover:bg-muted transition-colors">
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary/50 hover:bg-muted transition-colors"
+                >
                   <span className="text-lg">🐙</span>
                   <div>
                     <p className="text-sm font-medium">GitHub Repo Analyzer</p>
@@ -446,7 +517,7 @@ export function JobSubmissionForm() {
             </Card>
           </div>
         </div>
-      </div>
+      </form>
     </TooltipProvider>
   )
 }
