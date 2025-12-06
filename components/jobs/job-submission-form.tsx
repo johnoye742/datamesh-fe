@@ -24,8 +24,14 @@ import {
   FileJson,
   ArrowRight,
   Info,
+  Loader2,
 } from "lucide-react"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { http_tasksCreateInput, http_tasksCreateManyJobsInput, jobsCreateInput } from "@/generated/prisma/models"
+import { supabase } from "@/lib/supabaseClient"
+import { toast } from "sonner"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 const presetTargets = [
   { name: "Reddit", icon: "🔴", category: "Social" },
@@ -54,7 +60,7 @@ export function JobSubmissionForm() {
       description: "",
       priority: "normal",
       schedule: "immediate",
-      selectedTarget: null as string | null,
+      selectedTarget: "Custom URL",
       targetPaths: "",
       customUrls: [] as string[],
       currentUrl: "",
@@ -67,6 +73,9 @@ export function JobSubmissionForm() {
       retryFailed: true,
     },
   })
+
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState<boolean>(false)
 
   const formValues = watch()
   const {
@@ -104,9 +113,33 @@ export function JobSubmissionForm() {
   const estimatedCost = (customUrls.length || 1) * concurrency * 0.001
   const estimatedTime = Math.ceil(((customUrls.length || 1) * 1000) / concurrency)
 
-  const onSubmit = (data: any) => {
+  const onSubmit = async (data: any) => {
+    setIsLoading(true)
     console.log("Form Values:", data)
     // Handle form submission here
+    const input: jobsCreateInput = {
+      title: jobName,
+      priority
+    }
+
+    const { data: newJob, error } = await supabase.from("jobs")
+      .insert(input)
+      .select("*")
+
+    if(!error) {
+      const httpTasks: http_tasksCreateManyJobsInput[] = customUrls.map(url => ({
+        url,
+        job_id: newJob[0].id
+      }))
+
+      await supabase.from("http_tasks")
+        .insert(httpTasks)
+      
+      router.push("/dashboard")
+    } else {
+      toast.error(error.message)
+    }
+    setIsLoading(false)
   }
 
   return (
@@ -194,7 +227,7 @@ export function JobSubmissionForm() {
                 <CardDescription>Select preset targets or enter custom URLs</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Tabs defaultValue="presets" className="w-full">
+                <Tabs defaultValue="custom" className="w-full">
                   <TabsList className="grid w-full grid-cols-2 bg-muted">
                     <TabsTrigger value="presets">Preset Targets</TabsTrigger>
                     <TabsTrigger value="custom">Custom URLs</TabsTrigger>
@@ -458,8 +491,8 @@ export function JobSubmissionForm() {
                 </div>
 
                 <div className="border-t border-border pt-4 space-y-3">
-                  <Button className="w-full" size="lg" type="submit">
-                    Launch Job
+                  <Button className="w-full" size="lg" type="submit" disabled={isLoading}>
+                    { isLoading ? <Loader2 className="animate-spin"/> : "Launch Job" }
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                   <Button variant="outline" className="w-full bg-transparent" type="button">
