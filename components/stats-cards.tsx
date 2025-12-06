@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { Globe, Server, Database, DollarSign, TrendingUp, TrendingDown } from "lucide-react"
+import { Globe, Server, Database, DollarSign, TrendingUp, TrendingDown, Network } from "lucide-react"
 
 const stats = [
   {
@@ -29,12 +29,12 @@ const stats = [
     description: "Last 24 hours",
   },
   {
-    name: "Revenue (MTD)",
-    value: "$127,450",
-    change: "+12.4%",
+    name: "Pending Jobs",
+    value: "10",
+    change: "+100%",
     trend: "up",
-    icon: DollarSign,
-    description: "From API access",
+    icon: Network,
+    description: "Jobs To Be Run",
   },
 ]
 
